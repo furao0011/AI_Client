@@ -95,13 +95,37 @@ object MockRepository {
         )
         
         updateMessages(sessionId, newMessage)
+        simulateAiResponse(sessionId, content)
+    }
 
+    suspend fun editMessage(sessionId: String, messageId: String, newContent: String) {
+        val currentList = _messages.value[sessionId] ?: return
+        val targetIndex = currentList.indexOfFirst { it.id == messageId }
+        if (targetIndex == -1) return
+
+        // Keep messages up to the edited one (exclusive), then add the edited version
+        val keptMessages = currentList.take(targetIndex)
+        val editedMessage = currentList[targetIndex].copy(content = newContent, timestamp = System.currentTimeMillis())
+        
+        // Update map with truncated list + edited message
+        _messages.update { currentMap ->
+            currentMap + (sessionId to (keptMessages + editedMessage))
+        }
+
+        // Update session last message if needed (though AI response will likely update it again)
+        updateSessionLastMessage(sessionId, editedMessage)
+
+        // Trigger AI response again
+        simulateAiResponse(sessionId, newContent)
+    }
+
+    private suspend fun simulateAiResponse(sessionId: String, userContent: String) {
         // Simulate AI Response
         delay(1500)
         val aiResponse = Message(
             id = (System.currentTimeMillis() + 1).toString(),
             sessionId = sessionId,
-            content = "This is a mock AI response to: \"$content\"",
+            content = "AI Response to: \"$userContent\"\n(Regenerated)",
             isUser = false,
             timestamp = System.currentTimeMillis()
         )
@@ -113,8 +137,10 @@ object MockRepository {
             val currentList = currentMap[sessionId] ?: emptyList()
             currentMap + (sessionId to (currentList + message))
         }
-        
-        // Update session last message
+        updateSessionLastMessage(sessionId, message)
+    }
+
+    private fun updateSessionLastMessage(sessionId: String, message: Message) {
         _sessions.update { currentSessions ->
             currentSessions.map { session ->
                 if (session.id == sessionId) {
@@ -126,10 +152,20 @@ object MockRepository {
         }
     }
     
-    fun createSession(): String {
+    fun createSession(onResult: (String) -> Unit) {
         val newId = System.currentTimeMillis().toString()
         val newSession = Session(newId, "New Chat", "Start a conversation", System.currentTimeMillis())
         _sessions.update { listOf(newSession) + it }
-        return newId
+        onResult(newId)
+    }
+
+    fun deleteSession(sessionId: String) {
+        _sessions.update { it.filter { session -> session.id != sessionId } }
+        _messages.update { it - sessionId }
+    }
+
+    fun clearAllHistory() {
+        _sessions.value = emptyList()
+        _messages.value = emptyMap()
     }
 }

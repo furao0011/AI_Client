@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -52,6 +53,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -65,4 +70,8 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 // OkHttp (底层 HTTP 引擎)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Markdown 渲染
+    implementation("com.github.jeziellago:compose-markdown:0.5.4")
+    // Coil 图片加载（Markdown 图片渲染需要）
+    implementation("io.coil-kt:coil-compose:2.5.0")
 }

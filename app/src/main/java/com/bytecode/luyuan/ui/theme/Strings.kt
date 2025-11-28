@@ -31,7 +31,46 @@ data class AppStrings(
     val typeMessage: String,
     val welcomeBack: String,
     val selectLanguage: String,
-    val cancel: String
+    val cancel: String,
+    // API 配置相关
+    val apiConfigGroup: String,
+    val apiConfig: String,
+    val apiConfigSubtitle: String,
+    val apiBaseUrl: String,
+    val apiKey: String,
+    val modelName: String,
+    val save: String,
+    val testConnection: String,
+    val testing: String,
+    val connectionSuccess: String,
+    val connectionFailed: String,
+    val notConfigured: String,
+    val configured: String,
+    // 消息操作
+    val copyMessage: String,
+    val messageCopied: String,
+    // 多配置管理
+    val apiConfigs: String,
+    val addConfig: String,
+    val editConfig: String,
+    val deleteConfig: String,
+    val configName: String,
+    val setAsDefault: String,
+    val defaultConfig: String,
+    // 网络状态
+    val retrying: String,
+    val networkError: String,
+    // 多配置对话框
+    val savedConfigs: String,
+    val noSavedConfigs: String,
+    val configsSaved: String,
+    val close: String,
+    // 会话选择器
+    val selectSession: String,
+    val currentSession: String,
+    val switchSession: String,
+    // 加载状态
+    val aiThinking: String
 )
 
 val EnglishStrings = AppStrings(
@@ -62,7 +101,46 @@ val EnglishStrings = AppStrings(
     typeMessage = "Type a message...",
     welcomeBack = "Welcome Back",
     selectLanguage = "Select Language",
-    cancel = "Cancel"
+    cancel = "Cancel",
+    // API 配置相关
+    apiConfigGroup = "AI Service",
+    apiConfig = "API Configuration",
+    apiConfigSubtitle = "Configure your AI service provider",
+    apiBaseUrl = "API Base URL",
+    apiKey = "API Key",
+    modelName = "Model Name",
+    save = "Save",
+    testConnection = "Test Connection",
+    testing = "Testing...",
+    connectionSuccess = "Connection successful!",
+    connectionFailed = "Connection failed",
+    notConfigured = "Not Configured",
+    configured = "Configured",
+    // 消息操作
+    copyMessage = "Copy",
+    messageCopied = "Message copied",
+    // 多配置管理
+    apiConfigs = "API Configurations",
+    addConfig = "Add Configuration",
+    editConfig = "Edit",
+    deleteConfig = "Delete",
+    configName = "Configuration Name",
+    setAsDefault = "Set as Default",
+    defaultConfig = "Default",
+    // 网络状态
+    retrying = "Retrying...",
+    networkError = "Network error, please try again",
+    // 多配置对话框
+    savedConfigs = "Saved Configurations",
+    noSavedConfigs = "No saved configurations",
+    configsSaved = "configs saved",
+    close = "Close",
+    // 会话选择器
+    selectSession = "Select Session",
+    currentSession = "Current Session",
+    switchSession = "Switch Session",
+    // 加载状态
+    aiThinking = "AI is thinking"
 )
 
 val ChineseStrings = AppStrings(
@@ -93,7 +171,46 @@ val ChineseStrings = AppStrings(
     typeMessage = "输入消息...",
     welcomeBack = "欢迎回来",
     selectLanguage = "选择语言",
-    cancel = "取消"
+    cancel = "取消",
+    // API 配置相关
+    apiConfigGroup = "AI 服务",
+    apiConfig = "API 配置",
+    apiConfigSubtitle = "配置您的 AI 服务提供商",
+    apiBaseUrl = "API 地址",
+    apiKey = "API 密钥",
+    modelName = "模型名称",
+    save = "保存",
+    testConnection = "测试连接",
+    testing = "测试中...",
+    connectionSuccess = "连接成功！",
+    connectionFailed = "连接失败",
+    notConfigured = "未配置",
+    configured = "已配置",
+    // 消息操作
+    copyMessage = "复制",
+    messageCopied = "消息已复制",
+    // 多配置管理
+    apiConfigs = "API 配置管理",
+    addConfig = "添加配置",
+    editConfig = "编辑",
+    deleteConfig = "删除",
+    configName = "配置名称",
+    setAsDefault = "设为默认",
+    defaultConfig = "默认",
+    // 网络状态
+    retrying = "重试中...",
+    networkError = "网络错误，请重试",
+    // 多配置对话框
+    savedConfigs = "已保存的配置",
+    noSavedConfigs = "暂无已保存的配置",
+    configsSaved = "个配置",
+    close = "关闭",
+    // 会话选择器
+    selectSession = "选择会话",
+    currentSession = "当前会话",
+    switchSession = "切换会话",
+    // 加载状态
+    aiThinking = "AI 正在思考"
 )
 
 val LocalAppStrings = staticCompositionLocalOf { EnglishStrings }

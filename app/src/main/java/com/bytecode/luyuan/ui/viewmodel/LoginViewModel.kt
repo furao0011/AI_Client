@@ -2,20 +2,23 @@ package com.bytecode.luyuan.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bytecode.luyuan.data.repository.MockRepository
+import com.bytecode.luyuan.data.repository.AppRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class LoginViewModel : ViewModel() {
+/**
+ * 登录页面的 ViewModel
+ */
+class LoginViewModel(private val repository: AppRepository) : ViewModel() {
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
 
     fun login(username: String, password: String) {
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
-            val success = MockRepository.login(username, password)
+            val success = repository.login(username, password)
             if (success) {
                 _loginState.value = LoginState.Success
             } else {
@@ -28,8 +31,13 @@ class LoginViewModel : ViewModel() {
         _loginState.value = LoginState.Idle
     }
 
+    /**
+     * 设置语言（异步写入 DataStore）
+     */
     fun setLanguage(lang: String) {
-        MockRepository.setLanguage(lang)
+        viewModelScope.launch {
+            repository.setLanguage(lang)
+        }
     }
 }
 

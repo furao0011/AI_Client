@@ -16,7 +16,8 @@
 - **架构**: MVVM (Model-View-ViewModel)
 - **导航**: Jetpack Navigation Compose
 - **状态管理**: Kotlin StateFlow & ViewModel
-- **数据源**: Mock Repository (当前阶段)
+- **数据持久化**: Room Database (SQLite)
+- **依赖注入**: Manual Dependency Injection
 
 ## 部署与运行
 1. 克隆仓库。

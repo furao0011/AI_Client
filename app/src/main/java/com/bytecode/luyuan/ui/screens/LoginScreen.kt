@@ -41,6 +41,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.bytecode.luyuan.ui.theme.LocalAppStrings
 
+import androidx.compose.material.icons.filled.Face
+
 @Composable
 fun LoginScreen(navController: NavController, viewModel: LoginViewModel) {
     var username by remember { mutableStateOf("admin") } // Pre-fill for convenience
@@ -75,11 +77,11 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel) {
                             .padding(16.dp)
                     )
                     Text(
-                        text = "Chinese",
+                        text = "中文",
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                viewModel.setLanguage("Chinese")
+                                viewModel.setLanguage("中文")
                                 showLanguageDialog = false
                             }
                             .padding(16.dp)
@@ -111,10 +113,19 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Icon(
+                imageVector = Icons.Default.Face,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
                 text = strings.loginTitle,
                 style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -125,7 +136,8 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel) {
                 label = { Text(strings.usernameLabel) },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -138,7 +150,8 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel) {
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
             )
 
             if (loginState is LoginState.Error) {
@@ -159,7 +172,8 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                enabled = loginState !is LoginState.Loading
+                enabled = loginState !is LoginState.Loading,
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (loginState is LoginState.Loading) {
                     CircularProgressIndicator(
