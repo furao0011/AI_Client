@@ -116,10 +116,58 @@
 
 # TO_DO_REQUEST
 
-## v0.1.6.4
+## v0.1.7 - 服务端对接（Phase 1: 基础架构）
 
-- 完成以下任务：
+- 基础架构搭建：
+  - 新增服务端 API 接口定义（`AuthApi`, `SessionApi`, `MessageApi`, `UploadApi`）
+  - 新增通用响应包装类 `ApiResponse<T>`，统一错误码处理
+  - 新增 `AuthService` 认证服务，管理 Token 状态和持久化
+  - 扩展 `UserPreferencesDataStore`，增加 `authToken`、`serverBaseUrl`、`useServerAiService` 字段
+  - 新增网络错误处理器，Token 过期自动跳转登录
 
-    - 离线消息队列
-    - 会话导出功能（导出为 Markdown/JSON）
-    - 消息搜索功能
+## v0.1.7.1 - 服务端对接（Phase 2: 用户认证）
+
+- 用户认证对接：
+  - 改造登录界面，对接服务端 `/api/auth/login` API
+  - 新增注册界面 `RegisterScreen`，对接 `/api/auth/register` API
+  - 实现登录成功后 Token 保存，App 启动时自动恢复登录状态
+  - 导航改造：新增注册路由，登录页增加"注册"入口
+  - Token 过期处理：自动清除并跳转登录页
+
+## v0.1.7.2 - 服务端对接（Phase 3: 会话与消息同步）
+
+- 会话与消息服务端同步：
+  - 新增 `OnlineRepository` 实现，所有数据操作走服务端 API
+  - 会话列表从服务端 `/api/sessions` 获取，支持分页
+  - 消息列表从服务端 `/api/sessions/{id}/messages` 获取，支持分页
+  - 发送消息对接服务端 `/api/sessions/{id}/messages`
+  - 流式消息对接服务端 SSE 端点 `/api/sessions/{id}/messages/stream`
+  - `AppContainer` 支持 Repository 动态切换（离线/在线模式）
+
+## v0.1.7.3 - 服务端对接（Phase 4: 图片消息适配）
+
+- 图片消息服务端适配：
+  - 新增 `ImageUploader` 图片上传服务，支持 URI 和 Base64 上传
+  - 改造发送图片流程：选择图片 → 压缩 → 上传服务端 → 获取 URL → 发送消息
+  - `Message` 数据模型变更：`imageBase64` → `imageUrl`
+  - 数据库迁移 v3 → v4，新增 `imageUrl` 字段
+  - 消息展示适配：支持 URL 图片加载（Coil/Glide）
+
+## v0.1.7.4 - 服务端对接（Phase 5: AI 网关模式）
+
+- AI 服务网关模式：
+  - 设置界面新增"使用服务端 AI 服务"开关（默认开启）
+  - 开启服务端模式时，AI 请求走服务端网关 `/v1/chat/completions`
+  - 服务端模式下隐藏 API URL/Key 配置项
+  - 服务端网关使用用户 Token 认证，服务端内部替换为真实 API Key
+  - 保持 OpenAI API 格式完全兼容，SSE 流式响应透传
+
+## v0.1.7.5 - 服务端对接（Phase 6: 测试与优化）
+
+- 测试与优化：
+  - 端到端功能测试：注册→登录→创建会话→发送消息→流式响应
+  - 图片消息全流程测试
+  - 离线/在线模式切换测试
+  - 错误处理优化：网络异常、Token 过期、服务端错误提示
+  - 性能优化：消息列表懒加载、图片缓存
+  - 更新 README 和 DEV_LOG
