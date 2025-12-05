@@ -361,14 +361,28 @@ class OnlineRepository(
     }
 
     override suspend fun sendMessage(sessionId: String, content: String, imageBase64: String?) {
+        // 在线模式下，imageBase64 参数实际上应该传入 imageUrl
+        // 因为图片已经通过 ImageUploader 上传到服务端
+        // 这里为了兼容接口，将参数名保持为 imageBase64，但实际使用为 imageUrl
+        sendMessageWithUrl(sessionId, content, imageBase64)
+    }
+    
+    /**
+     * 发送消息（v0.1.7.3 新增）
+     * 
+     * 支持传入服务端图片 URL
+     * 
+     * @param sessionId 会话 ID
+     * @param content 消息内容
+     * @param imageUrl 服务端图片 URL（可选）
+     */
+    suspend fun sendMessageWithUrl(sessionId: String, content: String, imageUrl: String?) {
         withContext(Dispatchers.IO) {
             try {
                 val api = getApi(MessageApi::class.java)
                 val token = authService.getAuthHeader()
                 
-                // 注意：服务端 API 使用 imageUrl，而不是 imageBase64
-                // 图片上传逻辑将在 v0.1.7.3 实现
-                val request = SendMessageRequest(content = content, imageUrl = null)
+                val request = SendMessageRequest(content = content, imageUrl = imageUrl)
                 val response = api.sendMessage(token, sessionId, request)
                 
                 if (response.isSuccessful && response.body()?.isSuccess == true) {
@@ -411,12 +425,27 @@ class OnlineRepository(
         imageBase64: String?,
         onToken: suspend (String) -> Unit
     ) {
+        // 在线模式下，imageBase64 参数实际上应该传入 imageUrl
+        sendMessageStreamWithUrl(sessionId, content, imageBase64, onToken)
+    }
+    
+    /**
+     * 流式发送消息（v0.1.7.3 新增）
+     * 
+     * 支持传入服务端图片 URL
+     */
+    suspend fun sendMessageStreamWithUrl(
+        sessionId: String,
+        content: String,
+        imageUrl: String?,
+        onToken: suspend (String) -> Unit
+    ) {
         withContext(Dispatchers.IO) {
             try {
                 val api = getApi(MessageApi::class.java)
                 val token = authService.getAuthHeader()
                 
-                val request = SendMessageRequest(content = content, imageUrl = null)
+                val request = SendMessageRequest(content = content, imageUrl = imageUrl)
                 val response = api.sendMessageStream(token, sessionId, request)
                 
                 if (response.isSuccessful) {

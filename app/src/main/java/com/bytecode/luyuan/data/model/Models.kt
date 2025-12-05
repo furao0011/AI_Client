@@ -39,7 +39,8 @@ data class Message(
     val content: String,
     val isUser: Boolean,
     val timestamp: Long,
-    val imageBase64: String? = null  // Base64 编码的图片数据（用于多模态输入）
+    val imageBase64: String? = null,  // Base64 编码的图片数据（用于离线模式兼容）
+    val imageUrl: String? = null       // 服务端图片 URL（v0.1.7.3 新增，优先使用）
 )
 
 /**

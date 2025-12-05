@@ -34,7 +34,8 @@ object AppViewModelProvider {
         initializer {
             ChatViewModel(
                 offlineRepository = aiApplication().container.offlineRepository,
-                onlineRepository = aiApplication().container.onlineRepository
+                onlineRepository = aiApplication().container.onlineRepository,
+                imageUploader = aiApplication().container.imageUploader
             )
         }
         initializer {

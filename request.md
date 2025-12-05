@@ -142,8 +142,6 @@
   - 流式消息对接服务端 SSE 端点 `/api/sessions/{id}/messages/stream`
   - `AppContainer` 支持 Repository 动态切换（离线/在线模式）
 
-# TO_DO_REQUEST
-
 ## v0.1.7.3 - 服务端对接（Phase 4: 图片消息适配）
 
 - 图片消息服务端适配：
@@ -152,6 +150,8 @@
   - `Message` 数据模型变更：`imageBase64` → `imageUrl`
   - 数据库迁移 v3 → v4，新增 `imageUrl` 字段
   - 消息展示适配：支持 URL 图片加载（Coil/Glide）
+
+# TO_DO_REQUEST
 
 ## v0.1.7.4 - 服务端对接（Phase 5: AI 网关模式）
 

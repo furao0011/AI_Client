@@ -1,9 +1,12 @@
 package com.bytecode.luyuan.ui.viewmodel
 
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bytecode.luyuan.data.model.Message
 import com.bytecode.luyuan.data.model.Session
+import com.bytecode.luyuan.data.remote.ImageUploader
 import com.bytecode.luyuan.data.repository.AppRepository
 import com.bytecode.luyuan.data.repository.OnlineRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,6 +21,25 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
+ * 图片上传状态
+ * 
+ * v0.1.7.3 新增
+ */
+sealed class ImageUploadState {
+    /** 无图片 */
+    data object None : ImageUploadState()
+    
+    /** 正在上传 */
+    data class Uploading(val bitmap: Bitmap) : ImageUploadState()
+    
+    /** 上传成功 */
+    data class Success(val bitmap: Bitmap, val imageUrl: String) : ImageUploadState()
+    
+    /** 上传失败 */
+    data class Failed(val bitmap: Bitmap, val error: String) : ImageUploadState()
+}
+
+/**
  * 聊天界面的 ViewModel
  * 
  * 管理当前会话的消息流，支持发送和编辑消息
@@ -25,7 +47,8 @@ import kotlinx.coroutines.launch
  */
 class ChatViewModel(
     private val offlineRepository: AppRepository,
-    private val onlineRepository: OnlineRepository? = null
+    private val onlineRepository: OnlineRepository? = null,
+    private val imageUploader: ImageUploader? = null
 ) : ViewModel() {
     
     private val _currentSessionId = MutableStateFlow<String?>(null)
@@ -49,6 +72,10 @@ class ChatViewModel(
     /** 是否使用服务端模式 */
     private val _useServerMode = MutableStateFlow(false)
     val useServerMode: StateFlow<Boolean> = _useServerMode.asStateFlow()
+    
+    /** 图片上传状态（v0.1.7.3 新增） */
+    private val _imageUploadState = MutableStateFlow<ImageUploadState>(ImageUploadState.None)
+    val imageUploadState: StateFlow<ImageUploadState> = _imageUploadState.asStateFlow()
 
     /**
      * 获取当前有效的 Repository
@@ -157,26 +184,102 @@ class ChatViewModel(
         _streamingEnabled.value = enabled
     }
 
+    /**
+     * 选择图片并开始上传（v0.1.7.3 新增）
+     * 
+     * 流程：选择图片 → 显示预览（加载中）→ 上传服务端 → 获取 URL → 可发送
+     * 
+     * @param uri 图片 URI
+     */
+    fun selectAndUploadImage(uri: Uri) {
+        if (imageUploader == null) {
+            _error.value = "图片上传服务未初始化"
+            return
+        }
+        
+        viewModelScope.launch {
+            // 1. 加载 Bitmap 用于预览
+            val bitmap = imageUploader.loadBitmapFromUri(uri)
+            if (bitmap == null) {
+                _error.value = "无法加载图片"
+                return@launch
+            }
+            
+            // 2. 设置上传中状态
+            _imageUploadState.value = ImageUploadState.Uploading(bitmap)
+            
+            // 3. 上传图片到服务端
+            val result = imageUploader.uploadImage(uri)
+            
+            result.fold(
+                onSuccess = { uploadResult ->
+                    // 上传成功，保存 URL
+                    _imageUploadState.value = ImageUploadState.Success(bitmap, uploadResult.url)
+                },
+                onFailure = { throwable ->
+                    // 上传失败
+                    _imageUploadState.value = ImageUploadState.Failed(
+                        bitmap, 
+                        throwable.message ?: "上传失败"
+                    )
+                }
+            )
+        }
+    }
+    
+    /**
+     * 重试上传图片（v0.1.7.3 新增）
+     * 
+     * @param uri 图片 URI
+     */
+    fun retryUploadImage(uri: Uri) {
+        // 清除之前的状态，重新上传
+        selectAndUploadImage(uri)
+    }
+    
+    /**
+     * 清除选中的图片（v0.1.7.3 新增）
+     */
+    fun clearSelectedImage() {
+        _imageUploadState.value = ImageUploadState.None
+    }
+
     fun sendMessage(content: String, imageBase64: String? = null) {
         val sessionId = _currentSessionId.value ?: return
         if (_isLoading.value) return
+        
+        // 获取已上传的图片 URL（v0.1.7.3）
+        val imageUrl = when (val state = _imageUploadState.value) {
+            is ImageUploadState.Success -> state.imageUrl
+            else -> null
+        }
         
         _isLoading.value = true
         _error.value = null
         
         viewModelScope.launch {
             try {
-                if (_streamingEnabled.value && imageBase64 == null) {
-                    // 流式响应模式
+                if (_streamingEnabled.value && imageUrl == null && imageBase64 == null) {
+                    // 流式响应模式（无图片）
                     _streamingContent.value = ""
                     currentRepository.sendMessageStream(sessionId, content, imageBase64) { token ->
                         _streamingContent.value = (_streamingContent.value ?: "") + token
                     }
                     _streamingContent.value = null
                 } else {
-                    // 非流式响应模式
-                    currentRepository.sendMessage(sessionId, content, imageBase64)
+                    // 非流式响应模式或有图片
+                    // 服务端模式：使用 imageUrl
+                    // 离线模式：使用 imageBase64（兼容）
+                    if (_useServerMode.value && onlineRepository != null && imageUrl != null) {
+                        onlineRepository.sendMessage(sessionId, content, imageUrl)
+                    } else {
+                        currentRepository.sendMessage(sessionId, content, imageBase64)
+                    }
                 }
+                
+                // 发送成功后清除图片状态
+                _imageUploadState.value = ImageUploadState.None
+                
             } catch (e: Exception) {
                 _error.value = e.message ?: "发送消息失败"
                 _streamingContent.value = null

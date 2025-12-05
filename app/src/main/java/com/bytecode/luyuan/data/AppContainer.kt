@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.bytecode.luyuan.data.local.AppDatabase
 import com.bytecode.luyuan.data.local.UserPreferencesDataStore
 import com.bytecode.luyuan.data.remote.AuthService
+import com.bytecode.luyuan.data.remote.ImageUploader
 import com.bytecode.luyuan.data.remote.OpenAiService
 import com.bytecode.luyuan.data.repository.AppRepository
 import com.bytecode.luyuan.data.repository.OfflineRepository
@@ -27,6 +28,9 @@ interface AppContainer {
     
     /** 当前是否使用在线模式 */
     val useOnlineMode: Flow<Boolean>
+    
+    /** 图片上传服务（v0.1.7.3 新增） */
+    val imageUploader: ImageUploader
 }
 
 /**
@@ -43,7 +47,11 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
             AppDatabase::class.java,
             "ai_client_database"
         )
-        .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+        .addMigrations(
+            AppDatabase.MIGRATION_1_2, 
+            AppDatabase.MIGRATION_2_3,
+            AppDatabase.MIGRATION_3_4
+        )
         .build()
     }
 
@@ -99,6 +107,19 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
      * 由 useServerAiService 设置决定
      */
     override val useOnlineMode: Flow<Boolean> = userPreferencesDataStore.useServerAiService
+
+    /**
+     * 图片上传服务（v0.1.7.3 新增）
+     * 
+     * 支持 URI 和 Base64 两种方式上传图片到服务端
+     */
+    override val imageUploader: ImageUploader by lazy {
+        ImageUploader(
+            context = context,
+            authService = authService,
+            userPreferencesDataStore = userPreferencesDataStore
+        )
+    }
 
     /**
      * 默认 Repository（离线模式）

@@ -10,6 +10,29 @@
 
 ## 2025年12月5日
 
+### v0.1.7.3
+- [Feature] 图片消息服务端适配:
+  - 新增 `ImageUploader.kt`: 图片上传服务，支持 URI 和 Base64 两种上传方式
+    - `uploadImage(uri)`: 从 URI 读取、压缩并上传图片，返回服务端 URL
+    - `uploadImageBase64(base64)`: 上传 Base64 图片
+    - `loadBitmapFromUri(uri)`: 加载 Bitmap 用于预览
+  - `Message` 数据模型新增 `imageUrl` 字段（优先使用服务端 URL，兼容 `imageBase64`）
+  - 数据库迁移 v3→v4: `ALTER TABLE messages ADD COLUMN imageUrl TEXT`
+- [Feature] 图片上传状态管理:
+  - 新增 `ImageUploadState` 密封类: `None`, `Uploading`, `Success`, `Failed` 四种状态
+  - `ChatViewModel` 新增 `imageUploadState` 状态及相关方法:
+    - `selectAndUploadImage(uri)`: 选择图片并自动上传
+    - `clearSelectedImage()`: 清除选中的图片
+    - 图片上传成功后才允许发送消息
+- [Feature] ChatScreen UI 更新:
+  - `ChatInputArea` 支持显示上传状态: 上传中显示加载动画、失败显示重试按钮
+  - `MessageBubble` 支持显示服务端图片（Coil `AsyncImage` 组件）
+  - 发送按钮在图片上传中/失败时禁用
+- [Refactor] `OnlineRepository` 重构:
+  - 新增 `sendMessageWithUrl(sessionId, content, imageUrl)` 方法
+  - `sendMessage` 接口兼容处理：在线模式下 imageBase64 参数实际传入 imageUrl
+- [Refactor] `AppContainer` 扩展: 新增 `imageUploader` 依赖注入
+
 ### v0.1.7.2
 - [Feature] 会话与消息服务端同步:
   - 新增 `OnlineRepository.kt`: 实现 `AppRepository` 接口，所有数据操作走服务端 API

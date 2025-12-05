@@ -40,7 +40,9 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,8 +79,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.bytecode.luyuan.data.model.Message
 import com.bytecode.luyuan.ui.viewmodel.ChatViewModel
+import com.bytecode.luyuan.ui.viewmodel.ImageUploadState
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
 import androidx.compose.foundation.layout.imePadding
@@ -116,31 +121,19 @@ fun ChatScreen(
     // 记录当前正在编辑的消息ID
     var editingMessageId by remember { mutableStateOf<String?>(null) }
     
-    // 图片选择状态
-    var selectedImageBase64 by remember { mutableStateOf<String?>(null) }
-    var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    // 图片上传状态（v0.1.7.3 改用 ViewModel 管理）
+    val imageUploadState by viewModel.imageUploadState.collectAsState()
     
-    // 图片选择器
+    // 记录选中的图片 URI（用于重试上传）
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // 图片选择器（v0.1.7.3 改为触发上传）
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            try {
-                val inputStream = context.contentResolver.openInputStream(it)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
-                
-                if (bitmap != null) {
-                    selectedImageBitmap = bitmap
-                    // 压缩并转换为 Base64
-                    val outputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-                    val byteArray = outputStream.toByteArray()
-                    selectedImageBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            selectedImageUri = it
+            viewModel.selectAndUploadImage(it)
         }
     }
 
@@ -220,26 +213,34 @@ fun ChatScreen(
             )
         },
         bottomBar = {
+            // 判断是否可以发送：有内容，或者图片已上传成功
+            val canSend = (inputText.isNotBlank() || imageUploadState is ImageUploadState.Success) && !isLoading
+            val isImageUploading = imageUploadState is ImageUploadState.Uploading
+            
             ChatInputArea(
                 value = inputText,
                 onValueChange = { inputText = it },
                 onSend = {
-                    if ((inputText.isNotBlank() || selectedImageBase64 != null) && !isLoading) {
-                        viewModel.sendMessage(inputText, selectedImageBase64)
+                    if (canSend) {
+                        viewModel.sendMessage(inputText, null)  // imageUrl 由 ViewModel 处理
                         inputText = ""
-                        selectedImageBase64 = null
-                        selectedImageBitmap = null
+                        selectedImageUri = null
                     }
                 },
                 onAddImage = { imagePickerLauncher.launch("image/*") },
-                selectedImageBitmap = selectedImageBitmap,
+                imageUploadState = imageUploadState,
                 onRemoveImage = {
-                    selectedImageBase64 = null
-                    selectedImageBitmap = null
+                    viewModel.clearSelectedImage()
+                    selectedImageUri = null
+                },
+                onRetryUpload = {
+                    selectedImageUri?.let { uri ->
+                        viewModel.selectAndUploadImage(uri)
+                    }
                 },
                 modifier = Modifier.navigationBarsPadding().imePadding(),
                 placeholder = strings.typeMessage,
-                enabled = !isLoading
+                enabled = !isLoading && !isImageUploading
             )
         }
     ) { innerPadding ->
@@ -378,11 +379,30 @@ fun MessageBubble(
                 } else {
                     // 正常显示模式
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // 如果有图片，先显示图片
-                        message.imageBase64?.let { base64 ->
-                            val bitmap = remember(base64) {
+                        // 如果有图片，先显示图片（v0.1.7.3: 优先使用 imageUrl）
+                        val imageUrl = message.imageUrl
+                        val imageBase64 = message.imageBase64
+                        
+                        if (!imageUrl.isNullOrBlank()) {
+                            // 使用 Coil 加载服务端图片 URL
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Attached image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        } else if (!imageBase64.isNullOrBlank()) {
+                            // 兼容：使用 Base64 显示图片（离线模式）
+                            val bitmap = remember(imageBase64) {
                                 try {
-                                    val bytes = Base64.decode(base64, Base64.DEFAULT)
+                                    val bytes = Base64.decode(imageBase64, Base64.DEFAULT)
                                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                                 } catch (e: Exception) {
                                     null
@@ -482,12 +502,15 @@ fun ChatInputArea(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     onAddImage: () -> Unit = {},
-    selectedImageBitmap: Bitmap? = null,
+    imageUploadState: ImageUploadState = ImageUploadState.None,
     onRemoveImage: () -> Unit = {},
+    onRetryUpload: () -> Unit = {},
     modifier: Modifier = Modifier,
     placeholder: String = "Type a message...",
     enabled: Boolean = true
 ) {
+    val context = LocalContext.current
+    
     Surface(
         tonalElevation = 2.dp,
         color = MaterialTheme.colorScheme.surface,
@@ -498,36 +521,134 @@ fun ChatInputArea(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // 显示已选择的图片预览
-            selectedImageBitmap?.let { bitmap ->
-                Box(
-                    modifier = Modifier
-                        .padding(bottom = 8.dp)
-                ) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Selected image",
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                    // 删除按钮
-                    IconButton(
-                        onClick = onRemoveImage,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(24.dp)
-                            .background(
-                                MaterialTheme.colorScheme.errorContainer,
-                                CircleShape
+            // 根据上传状态显示图片预览（v0.1.7.3）
+            when (imageUploadState) {
+                is ImageUploadState.None -> {
+                    // 无图片，不显示
+                }
+                is ImageUploadState.Uploading -> {
+                    // 上传中：显示图片 + 加载指示器
+                    Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                        Image(
+                            bitmap = imageUploadState.bitmap.asImageBitmap(),
+                            contentDescription = "Uploading image",
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.5f  // 半透明表示正在上传
+                        )
+                        // 上传中指示器
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.Center),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                is ImageUploadState.Success -> {
+                    // 上传成功：显示图片 + 删除按钮
+                    Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                        Image(
+                            bitmap = imageUploadState.bitmap.asImageBitmap(),
+                            contentDescription = "Selected image",
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        // 删除按钮
+                        IconButton(
+                            onClick = onRemoveImage,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(24.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.errorContainer,
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove image",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onErrorContainer
                             )
-                    ) {
+                        }
+                        // 成功标记
                         Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Remove image",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onErrorContainer
+                            Icons.Default.Check,
+                            contentDescription = "Upload success",
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(20.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    CircleShape
+                                )
+                                .padding(2.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                is ImageUploadState.Failed -> {
+                    // 上传失败：显示图片 + 错误提示 + 重试按钮
+                    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                        Box {
+                            Image(
+                                bitmap = imageUploadState.bitmap.asImageBitmap(),
+                                contentDescription = "Failed image",
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop,
+                                alpha = 0.5f
+                            )
+                            // 删除按钮
+                            IconButton(
+                                onClick = onRemoveImage,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(24.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.errorContainer,
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove image",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                            // 重试按钮
+                            IconButton(
+                                onClick = onRetryUpload,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(32.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = "Retry upload",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        // 错误提示
+                        Text(
+                            text = imageUploadState.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
@@ -541,12 +662,13 @@ fun ChatInputArea(
                 IconButton(
                     onClick = onAddImage,
                     modifier = Modifier.size(40.dp),
-                    enabled = enabled
+                    enabled = enabled && imageUploadState is ImageUploadState.None
                 ) {
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "Add image",
-                        tint = if (enabled) MaterialTheme.colorScheme.primary 
+                        tint = if (enabled && imageUploadState is ImageUploadState.None) 
+                                   MaterialTheme.colorScheme.primary 
                                else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -561,21 +683,24 @@ fun ChatInputArea(
                     enabled = enabled
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+                
+                // 发送按钮：上传中或上传失败时禁用
+                val canSend = enabled && imageUploadState !is ImageUploadState.Uploading && imageUploadState !is ImageUploadState.Failed
                 IconButton(
                     onClick = onSend,
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            if (enabled) MaterialTheme.colorScheme.primary 
+                            if (canSend) MaterialTheme.colorScheme.primary 
                             else MaterialTheme.colorScheme.surfaceVariant, 
                             CircleShape
                         ),
-                    enabled = enabled
+                    enabled = canSend
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
-                        tint = if (enabled) MaterialTheme.colorScheme.onPrimary
+                        tint = if (canSend) MaterialTheme.colorScheme.onPrimary
                                else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

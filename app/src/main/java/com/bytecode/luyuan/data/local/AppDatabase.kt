@@ -9,7 +9,7 @@ import com.bytecode.luyuan.data.model.Message
 import com.bytecode.luyuan.data.model.Session
 import com.bytecode.luyuan.data.model.User
 
-@Database(entities = [User::class, Session::class, Message::class, ApiConfigEntity::class], version = 3, exportSchema = false)
+@Database(entities = [User::class, Session::class, Message::class, ApiConfigEntity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun sessionDao(): SessionDao
@@ -44,6 +44,16 @@ abstract class AppDatabase : RoomDatabase() {
                         createdAt INTEGER NOT NULL DEFAULT 0
                     )
                 """)
+            }
+        }
+        
+        /**
+         * 数据库迁移：v3 -> v4
+         * 添加 imageUrl 字段用于服务端图片消息（v0.1.7.3）
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE messages ADD COLUMN imageUrl TEXT")
             }
         }
     }
