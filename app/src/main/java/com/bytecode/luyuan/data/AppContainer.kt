@@ -8,36 +8,42 @@ import com.bytecode.luyuan.data.remote.AuthService
 import com.bytecode.luyuan.data.remote.ImageUploader
 import com.bytecode.luyuan.data.remote.OpenAiService
 import com.bytecode.luyuan.data.repository.AppRepository
-import com.bytecode.luyuan.data.repository.OfflineRepository
 import com.bytecode.luyuan.data.repository.OnlineRepository
-import kotlinx.coroutines.flow.Flow
 
 /**
  * 依赖注入容器接口
+ * 
+ * 【架构说明】
+ * - 服务端是唯一数据源 (Single Source of Truth)
+ * - 本地数据库只作为缓存使用
+ * - useServerAiService 开关只控制 AI 请求路由，不影响会话/消息数据源
  */
 interface AppContainer {
+    /** 主 Repository - 所有数据操作走服务端 */
     val appRepository: AppRepository
+    
+    /** 认证服务 */
     val authService: AuthService
+    
+    /** 用户偏好存储 */
     val userPreferencesDataStore: UserPreferencesDataStore
     
-    /** 离线模式 Repository（用于本地数据操作） */
-    val offlineRepository: OfflineRepository
-    
-    /** 在线模式 Repository（用于服务端同步） */
-    val onlineRepository: OnlineRepository
-    
-    /** 当前是否使用在线模式 */
-    val useOnlineMode: Flow<Boolean>
-    
-    /** 图片上传服务（v0.1.7.3 新增） */
+    /** 图片上传服务 */
     val imageUploader: ImageUploader
+    
+    /** OpenAI 服务（用于自定义 API 模式） */
+    val openAiService: OpenAiService
 }
 
 /**
  * 默认依赖注入容器实现
  * 
  * 提供 Room 数据库、DataStore、认证服务和网络服务的单例实例
- * 支持离线/在线模式动态切换
+ * 
+ * 【架构说明】
+ * - 用户登录后，所有会话和消息数据从服务端获取
+ * - 本地数据库作为缓存，加速加载和支持离线查看
+ * - useServerAiService 开关只控制 AI 请求走服务端网关还是自定义 API
  */
 class DefaultAppContainer(private val context: Context) : AppContainer {
     
@@ -59,59 +65,19 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         UserPreferencesDataStore(context)
     }
 
-    private val openAiService: OpenAiService by lazy {
+    override val openAiService: OpenAiService by lazy {
         OpenAiService()
     }
 
     /**
      * 认证服务单例
-     * 
-     * 管理用户登录状态、Token 持久化和 API 调用
      */
     override val authService: AuthService by lazy {
         AuthService(userPreferencesDataStore)
     }
 
     /**
-     * 离线模式 Repository
-     * 
-     * 使用本地 Room 数据库存储数据，直连 AI API
-     */
-    override val offlineRepository: OfflineRepository by lazy {
-        OfflineRepository(
-            userDao = database.userDao(),
-            sessionDao = database.sessionDao(),
-            messageDao = database.messageDao(),
-            apiConfigDao = database.apiConfigDao(),
-            userPreferencesDataStore = userPreferencesDataStore,
-            openAiService = openAiService
-        )
-    }
-
-    /**
-     * 在线模式 Repository
-     * 
-     * 所有数据操作走服务端 API，支持会话和消息的服务端同步
-     */
-    override val onlineRepository: OnlineRepository by lazy {
-        OnlineRepository(
-            authService = authService,
-            userPreferencesDataStore = userPreferencesDataStore,
-            apiConfigDao = database.apiConfigDao()
-        )
-    }
-
-    /**
-     * 当前是否使用在线模式
-     * 
-     * 由 useServerAiService 设置决定
-     */
-    override val useOnlineMode: Flow<Boolean> = userPreferencesDataStore.useServerAiService
-
-    /**
-     * 图片上传服务（v0.1.7.3 新增）
-     * 
-     * 支持 URI 和 Base64 两种方式上传图片到服务端
+     * 图片上传服务
      */
     override val imageUploader: ImageUploader by lazy {
         ImageUploader(
@@ -122,12 +88,16 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     /**
-     * 默认 Repository（离线模式）
+     * 主 Repository - 服务端为唯一数据源
      * 
-     * 注意：ViewModel 应根据 useOnlineMode 动态选择使用 offlineRepository 或 onlineRepository
-     * 这里默认返回离线模式，确保向后兼容
+     * 所有会话和消息数据从服务端获取，本地只做缓存
      */
     override val appRepository: AppRepository by lazy {
-        offlineRepository
+        OnlineRepository(
+            authService = authService,
+            userPreferencesDataStore = userPreferencesDataStore,
+            apiConfigDao = database.apiConfigDao(),
+            openAiService = openAiService
+        )
     }
 }

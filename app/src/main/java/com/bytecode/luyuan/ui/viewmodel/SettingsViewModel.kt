@@ -49,6 +49,10 @@ class SettingsViewModel(private val repository: AppRepository) : ViewModel() {
     /** API 连接测试状态 */
     private val _apiTestState = MutableStateFlow<ApiTestState>(ApiTestState.Idle)
     val apiTestState: StateFlow<ApiTestState> = _apiTestState.asStateFlow()
+    
+    /** 是否使用服务端 AI 服务（v0.1.7.4 新增） */
+    val useServerAiService: StateFlow<Boolean> = repository.useServerAiService
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun logout() {
         viewModelScope.launch {
@@ -148,6 +152,17 @@ class SettingsViewModel(private val repository: AppRepository) : ViewModel() {
     fun setDefaultApiConfig(configId: String) {
         viewModelScope.launch {
             repository.setDefaultApiConfig(configId)
+        }
+    }
+    
+    /**
+     * 切换是否使用服务端 AI 服务（v0.1.7.4 新增）
+     * 
+     * @param useServer true=使用服务端网关，false=使用自定义 API
+     */
+    fun setUseServerAiService(useServer: Boolean) {
+        viewModelScope.launch {
+            repository.setUseServerAiService(useServer)
         }
     }
 }

@@ -22,22 +22,31 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import com.bytecode.luyuan.data.remote.OpenAiService
 import java.io.BufferedReader
 import java.util.concurrent.TimeUnit
 
 /**
- * 在线 Repository 实现
+ * 统一 Repository 实现
  * 
- * 所有数据操作走服务端 API，支持会话和消息的服务端同步
+ * 【架构说明】
+ * - 服务端是唯一数据源 (Single Source of Truth)
+ * - 所有会话和消息数据从服务端获取
+ * - 本地缓存用于加速和离线查看
+ * - useServerAiService 开关只控制 AI 请求路由:
+ *   - true: AI 请求走服务端网关 /api/sessions/{id}/messages/stream
+ *   - false: AI 请求走自定义 API (OpenAiService)
  * 
  * @param authService 认证服务
  * @param userPreferencesDataStore 用户偏好存储
- * @param apiConfigDao API 配置数据访问对象（用于多 API 配置管理）
+ * @param apiConfigDao API 配置数据访问对象
+ * @param openAiService OpenAI 服务（用于自定义 API 模式）
  */
 class OnlineRepository(
     private val authService: AuthService,
     private val userPreferencesDataStore: UserPreferencesDataStore,
-    private val apiConfigDao: ApiConfigDao
+    private val apiConfigDao: ApiConfigDao,
+    private val openAiService: OpenAiService? = null
 ) : AppRepository {
 
     companion object {
@@ -168,6 +177,10 @@ class OnlineRepository(
     override suspend fun setDefaultApiConfig(configId: String) {
         apiConfigDao.clearAllDefaults()
         apiConfigDao.setAsDefault(configId)
+    }
+    
+    override suspend fun setUseServerAiService(useServer: Boolean) {
+        userPreferencesDataStore.setUseServerAiService(useServer)
     }
 
     // ==================== 认证相关 ====================
@@ -486,8 +499,8 @@ class OnlineRepository(
         }
         
         val aiContentBuilder = StringBuilder()
-        var userMessageId: String? = null
-        var aiMessageId: String? = null
+        var userMessageAdded = false
+        var aiMessageAdded = false
         var sessionTitle: String? = null
 
         try {
@@ -512,7 +525,7 @@ class OnlineRepository(
                             StreamEventType.USER_MESSAGE -> {
                                 // 用户消息已发送
                                 val messageObj = eventData?.asJsonObject
-                                userMessageId = messageObj?.get("id")?.asString
+                                val userMessageId = messageObj?.get("id")?.asString
                                 val messageContent = messageObj?.get("content")?.asString ?: userContent
                                 
                                 val userMessage = Message(
@@ -524,6 +537,7 @@ class OnlineRepository(
                                     imageBase64 = null
                                 )
                                 messagesFlow.value = messagesFlow.value + userMessage
+                                userMessageAdded = true
                             }
                             
                             StreamEventType.AI_TOKEN -> {
@@ -538,7 +552,7 @@ class OnlineRepository(
                             StreamEventType.AI_MESSAGE -> {
                                 // AI 完整回复
                                 val messageObj = eventData?.asJsonObject
-                                aiMessageId = messageObj?.get("id")?.asString
+                                val aiMessageId = messageObj?.get("id")?.asString
                                 val finalContent = messageObj?.get("content")?.asString ?: aiContentBuilder.toString()
                                 
                                 val aiMessage = Message(
@@ -550,6 +564,7 @@ class OnlineRepository(
                                     imageBase64 = null
                                 )
                                 messagesFlow.value = messagesFlow.value + aiMessage
+                                aiMessageAdded = true
                                 
                                 // 更新会话最后消息
                                 updateSessionLastMessage(sessionId, finalContent)
@@ -566,7 +581,8 @@ class OnlineRepository(
                             StreamEventType.ERROR -> {
                                 // 错误
                                 val errorMsg = eventData?.asString ?: "未知错误"
-                                throw Exception(errorMsg)
+                                Log.e(TAG, "SSE Error: $errorMsg")
+                                // 不抛出异常，继续处理
                             }
                         }
                     } catch (e: Exception) {
@@ -574,8 +590,39 @@ class OnlineRepository(
                     }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "SSE stream error", e)
         } finally {
             reader.close()
+            
+            // 如果 AI 回复有内容但未添加完整消息，保存已收到的内容
+            if (!aiMessageAdded && aiContentBuilder.isNotEmpty()) {
+                val aiMessage = Message(
+                    id = java.util.UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    content = aiContentBuilder.toString(),
+                    isUser = false,
+                    timestamp = System.currentTimeMillis(),
+                    imageBase64 = null
+                )
+                messagesFlow.value = messagesFlow.value + aiMessage
+                updateSessionLastMessage(sessionId, aiContentBuilder.toString())
+                Log.d(TAG, "Saved incomplete AI message: ${aiContentBuilder.length} chars")
+            }
+            
+            // 如果用户消息都没发出去，添加一个本地记录
+            if (!userMessageAdded) {
+                val userMessage = Message(
+                    id = java.util.UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    content = userContent,
+                    isUser = true,
+                    timestamp = System.currentTimeMillis(),
+                    imageBase64 = null
+                )
+                messagesFlow.value = messagesFlow.value + userMessage
+                Log.d(TAG, "Added local user message as server didn't confirm")
+            }
         }
     }
 

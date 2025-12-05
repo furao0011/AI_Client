@@ -54,6 +54,9 @@ interface AppRepository {
     
     /** 将指定配置设为默认 */
     suspend fun setDefaultApiConfig(configId: String)
+    
+    /** 设置是否使用服务端 AI 服务（v0.1.7.4 新增） */
+    suspend fun setUseServerAiService(useServer: Boolean)
 
     suspend fun login(username: String, password: String): Boolean
     suspend fun logout()

@@ -44,6 +44,9 @@ class OfflineRepository(
     override val darkMode: Flow<Boolean> = userPreferencesDataStore.darkMode
     override val apiConfig: Flow<ApiConfig> = userPreferencesDataStore.apiConfig
     
+    // 有效的 API 配置（根据服务端模式自动选择）
+    private val effectiveApiConfig: Flow<ApiConfig> = userPreferencesDataStore.effectiveApiConfig
+    
     // 多 API 配置管理
     override val savedApiConfigs: Flow<List<ApiConfigEntity>> = apiConfigDao.getAllConfigs()
     
@@ -96,6 +99,10 @@ class OfflineRepository(
     override suspend fun setDefaultApiConfig(configId: String) {
         apiConfigDao.clearAllDefaults()
         apiConfigDao.setAsDefault(configId)
+    }
+    
+    override suspend fun setUseServerAiService(useServer: Boolean) {
+        userPreferencesDataStore.setUseServerAiService(useServer)
     }
 
     override suspend fun login(username: String, password: String): Boolean {
@@ -183,7 +190,7 @@ class OfflineRepository(
      * @return Pair<回复内容, 会话标题>
      */
     private suspend fun getAiResponseWithTitle(userMessage: String): Pair<String, String?> {
-        val config = apiConfig.first()
+        val config = effectiveApiConfig.first()
         
         // 如果 API 未配置，使用 Mock 响应
         if (!config.isConfigured) {
@@ -218,7 +225,7 @@ class OfflineRepository(
      * 如果 API 已配置，调用真实 API；否则返回 Echo 响应
      */
     private suspend fun getAiResponse(sessionId: String): String {
-        val config = apiConfig.first()
+        val config = effectiveApiConfig.first()
         
         // 如果 API 未配置，使用 Mock 响应
         if (!config.isConfigured) {
@@ -261,7 +268,7 @@ class OfflineRepository(
         textContent: String, 
         imageBase64: String
     ): String {
-        val config = apiConfig.first()
+        val config = effectiveApiConfig.first()
         
         // 如果 API 未配置，使用 Mock 响应
         if (!config.isConfigured) {
@@ -379,7 +386,7 @@ class OfflineRepository(
             sessionDao.updateSession(session.copy(lastMessage = displayMessage, timestamp = System.currentTimeMillis()))
         }
         
-        val config = apiConfig.first()
+        val config = effectiveApiConfig.first()
         
         // 如果 API 未配置或包含图片，使用非流式响应
         if (!config.isConfigured || imageBase64 != null) {

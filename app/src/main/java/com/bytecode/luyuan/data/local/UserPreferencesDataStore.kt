@@ -66,7 +66,7 @@ class UserPreferencesDataStore(private val context: Context) {
         const val DEFAULT_MODEL_NAME = "gpt-3.5-turbo"
         
         // 默认服务端配置
-        const val DEFAULT_SERVER_BASE_URL = "http://localhost:8080"
+        const val DEFAULT_SERVER_BASE_URL = "http://10.0.2.2:8080"
         const val DEFAULT_USE_SERVER_AI_SERVICE = true
     }
 
@@ -142,18 +142,20 @@ class UserPreferencesDataStore(private val context: Context) {
      * 有效的 API 配置 Flow
      * 
      * 根据 useServerAiService 设置返回服务端配置或自定义配置
+     * 服务端模式时，使用 authToken 作为认证
      */
     val effectiveApiConfig: Flow<ApiConfig> = combine(
         useServerAiService,
         serverBaseUrl,
+        authToken,
         apiConfig
-    ) { useServer, serverUrl, customConfig ->
+    ) { useServer, serverUrl, token, customConfig ->
         if (useServer) {
             ApiConfig(
-                baseUrl = "$serverUrl/",
-                apiKey = "", // 服务端模式使用 authToken
+                baseUrl = "$serverUrl/v1/",
+                apiKey = token ?: "", // 服务端模式使用 authToken
                 modelName = "qwen-turbo",
-                isConfigured = true
+                isConfigured = !token.isNullOrEmpty()
             )
         } else {
             customConfig

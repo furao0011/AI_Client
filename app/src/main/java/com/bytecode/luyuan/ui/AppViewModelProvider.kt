@@ -11,6 +11,14 @@ import com.bytecode.luyuan.ui.viewmodel.RegisterViewModel
 import com.bytecode.luyuan.ui.viewmodel.SessionListViewModel
 import com.bytecode.luyuan.ui.viewmodel.SettingsViewModel
 
+/**
+ * ViewModel 工厂提供者
+ * 
+ * 【架构说明】
+ * - 服务端是唯一数据源 (Single Source of Truth)
+ * - 所有 ViewModel 使用 appRepository (OnlineRepository)
+ * - useServerAiService 开关只控制 AI 请求路由，不影响数据源
+ */
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
@@ -27,14 +35,12 @@ object AppViewModelProvider {
         }
         initializer {
             SessionListViewModel(
-                offlineRepository = aiApplication().container.offlineRepository,
-                onlineRepository = aiApplication().container.onlineRepository
+                repository = aiApplication().container.appRepository
             )
         }
         initializer {
             ChatViewModel(
-                offlineRepository = aiApplication().container.offlineRepository,
-                onlineRepository = aiApplication().container.onlineRepository,
+                repository = aiApplication().container.appRepository,
                 imageUploader = aiApplication().container.imageUploader
             )
         }

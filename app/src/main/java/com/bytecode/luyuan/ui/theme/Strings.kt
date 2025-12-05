@@ -90,7 +90,14 @@ data class AppStrings(
     val usernameEmpty: String,
     val passwordEmpty: String,
     val loginFailed: String,
-    val unknownError: String
+    val unknownError: String,
+    // 服务端 AI 模式（v0.1.7.4）
+    val useServerAiService: String,
+    val useServerAiServiceSubtitle: String,
+    val customApiMode: String,
+    val customApiModeSubtitle: String,
+    val serverAiEnabled: String,
+    val serverAiDisabled: String
 )
 
 val EnglishStrings = AppStrings(
@@ -180,7 +187,14 @@ val EnglishStrings = AppStrings(
     usernameEmpty = "Username cannot be empty",
     passwordEmpty = "Password cannot be empty",
     loginFailed = "Login failed, please check your credentials",
-    unknownError = "Unknown error occurred"
+    unknownError = "Unknown error occurred",
+    // 服务端 AI 模式（v0.1.7.4）
+    useServerAiService = "Use Server AI Service",
+    useServerAiServiceSubtitle = "Use server gateway for AI requests (no API key required)",
+    customApiMode = "Custom API",
+    customApiModeSubtitle = "Configure your own AI API provider",
+    serverAiEnabled = "Server AI mode enabled",
+    serverAiDisabled = "Using custom API configuration"
 )
 
 val ChineseStrings = AppStrings(
@@ -270,7 +284,14 @@ val ChineseStrings = AppStrings(
     usernameEmpty = "用户名不能为空",
     passwordEmpty = "密码不能为空",
     loginFailed = "登录失败，请检查您的凭证",
-    unknownError = "发生未知错误"
+    unknownError = "发生未知错误",
+    // 服务端 AI 模式（v0.1.7.4）
+    useServerAiService = "使用服务端 AI 服务",
+    useServerAiServiceSubtitle = "通过服务端网关请求 AI（无需配置 API 密钥）",
+    customApiMode = "自定义 API",
+    customApiModeSubtitle = "配置您自己的 AI API 提供商",
+    serverAiEnabled = "已启用服务端 AI 模式",
+    serverAiDisabled = "使用自定义 API 配置"
 )
 
 val LocalAppStrings = staticCompositionLocalOf { EnglishStrings }

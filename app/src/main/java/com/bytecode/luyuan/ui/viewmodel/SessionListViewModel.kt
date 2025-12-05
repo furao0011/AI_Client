@@ -15,12 +15,13 @@ import kotlinx.coroutines.launch
 /**
  * 会话列表 ViewModel
  *
- * 负责管理会话列表的获取、创建、删除功能
- * 支持本地存储和服务端同步两种模式
+ * 【架构说明】
+ * - 服务端是唯一数据源 (Single Source of Truth)
+ * - 本地缓存用于加速和离线查看
+ * - useServerAiService 开关只控制 AI 请求路由，不影响数据源
  */
 class SessionListViewModel(
-    private val offlineRepository: AppRepository,
-    private val onlineRepository: OnlineRepository? = null
+    private val repository: AppRepository
 ) : ViewModel() {
     
     // 加载状态
@@ -31,73 +32,38 @@ class SessionListViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    // 是否使用服务端模式
-    private val _useServerMode = MutableStateFlow(false)
-    val useServerMode: StateFlow<Boolean> = _useServerMode.asStateFlow()
-
     /**
-     * 获取当前有效的 Repository
+     * 会话列表 - 从服务端获取
      */
-    private val currentRepository: AppRepository
-        get() = if (_useServerMode.value && onlineRepository != null) onlineRepository else offlineRepository
-
-    /**
-     * 会话列表
-     * 
-     * 根据当前模式从对应 Repository 获取
-     */
-    val sessions: StateFlow<List<Session>> = offlineRepository.sessions
+    val sessions: StateFlow<List<Session>> = repository.sessions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /**
-     * 在线模式会话列表
-     */
-    val onlineSessions: StateFlow<List<Session>> = onlineRepository?.sessions
-        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-        ?: MutableStateFlow(emptyList())
-
     init {
-        // 初始化时检查是否启用服务端模式并加载会话
-        viewModelScope.launch {
-            offlineRepository.useServerAiService.collect { useServer ->
-                _useServerMode.value = useServer
-                if (useServer && onlineRepository != null) {
-                    loadServerSessions()
-                }
-            }
-        }
+        // 初始化时从服务端加载会话列表
+        refresh()
     }
 
     /**
-     * 从服务端加载会话列表
+     * 刷新会话列表（从服务端获取）
      */
-    fun loadServerSessions() {
-        if (onlineRepository == null) return
-        
+    fun refresh() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             
-            val result = onlineRepository.refreshSessions()
-            result.fold(
-                onSuccess = { _ ->
-                    // 成功加载，数据已自动更新到 onlineSessions
-                },
-                onFailure = { throwable ->
-                    _error.value = throwable.message ?: "加载会话列表失败"
+            try {
+                // OnlineRepository 实现了 refreshSessions 方法
+                if (repository is OnlineRepository) {
+                    val result = repository.refreshSessions()
+                    result.onFailure { throwable ->
+                        _error.value = throwable.message ?: "加载会话列表失败"
+                    }
                 }
-            )
+            } catch (e: Exception) {
+                _error.value = e.message ?: "加载会话列表失败"
+            }
             
             _isLoading.value = false
-        }
-    }
-
-    /**
-     * 刷新会话列表
-     */
-    fun refresh() {
-        if (_useServerMode.value && onlineRepository != null) {
-            loadServerSessions()
         }
     }
 
@@ -112,19 +78,10 @@ class SessionListViewModel(
             _error.value = null
             
             try {
-                val id = currentRepository.createSession("New Chat")
+                val id = repository.createSession("New Chat")
                 onSessionCreated(id)
             } catch (e: Exception) {
                 _error.value = e.message ?: "创建会话失败"
-                // 如果在线模式失败，回退到离线模式
-                if (_useServerMode.value) {
-                    try {
-                        val id = offlineRepository.createSession("New Chat")
-                        onSessionCreated(id)
-                    } catch (e2: Exception) {
-                        _error.value = e2.message ?: "创建会话失败"
-                    }
-                }
             }
             
             _isLoading.value = false
@@ -139,17 +96,9 @@ class SessionListViewModel(
     fun deleteSession(sessionId: String) {
         viewModelScope.launch {
             try {
-                currentRepository.deleteSession(sessionId)
+                repository.deleteSession(sessionId)
             } catch (e: Exception) {
                 _error.value = e.message ?: "删除会话失败"
-                // 如果在线模式失败，仍然尝试删除本地
-                if (_useServerMode.value) {
-                    try {
-                        offlineRepository.deleteSession(sessionId)
-                    } catch (e2: Exception) {
-                        // 忽略
-                    }
-                }
             }
         }
     }
@@ -160,7 +109,7 @@ class SessionListViewModel(
     fun clearAllHistory() {
         viewModelScope.launch {
             try {
-                currentRepository.clearAllHistory()
+                repository.clearAllHistory()
             } catch (e: Exception) {
                 _error.value = e.message ?: "清除历史失败"
             }

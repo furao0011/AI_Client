@@ -10,6 +10,31 @@
 
 ## 2025年12月5日
 
+### v0.1.7.4
+- [Feature] AI 网关模式:
+  - 设置界面新增"使用服务端 AI 服务"开关（默认开启），控制 AI 请求路由
+  - 开关开启时隐藏自定义 API 配置项（API URL、API Key、已保存配置）
+  - 开关关闭时显示完整的自定义 API 配置界面
+- [Feature] 服务端网关集成:
+  - `effectiveApiConfig` 重构：结合 `useServerAiService`、`serverBaseUrl`、`authToken` 动态选择配置
+  - 服务端模式使用用户 JWT Token 认证（`authToken` 作为 `apiKey` 传递）
+  - 服务端模式默认模型为 `qwen-turbo`，baseUrl 自动拼接 `/v1/`
+- [Refactor] **架构重构 - 服务端唯一数据源** (Single Source of Truth):
+  - **核心决策**: 服务端是唯一数据源，本地数据库仅作缓存
+  - **`useServerAiService` 开关**: 只控制 AI 请求路由（服务端网关 vs 自定义 API），**不影响数据源**
+  - `AppContainer` 简化: 移除 `offlineRepository`/`onlineRepository` 分离，统一使用 `appRepository`（实际为 `OnlineRepository`）
+  - `SessionListViewModel` 重写: 移除离线/在线模式切换，统一使用单一 Repository
+  - `ChatViewModel` 重写: 移除 `offlineMessages`/`onlineMessages` 冗余属性，简化为单一数据源
+  - `OnlineRepository` 强化: 新增 `OpenAiService` 构造参数支持自定义 API 模式
+- [Fix] **SSE 流式响应中断处理**:
+  - `processStreamResponse` 新增 `userMessageAdded`/`aiMessageAdded` 标记追踪消息状态
+  - 流中断时（服务端错误、网络断开）在 `finally` 块保存已接收的 AI 回复内容
+  - 如果服务端未确认用户消息，添加本地记录避免消息丢失
+  - `ERROR` 事件不再抛出异常，仅记录日志继续处理
+- [Refactor] `SettingsSwitchItem` 组件扩展: 新增可选 `subtitle` 参数支持说明文字
+- [Refactor] `Strings.kt` 新增多语言字符串: `useServerAiService`、`useServerAiServiceSubtitle`、
+  `customApiMode`、`customApiModeSubtitle`、`serverAiEnabled`、`serverAiDisabled`
+
 ### v0.1.7.3
 - [Feature] 图片消息服务端适配:
   - 新增 `ImageUploader.kt`: 图片上传服务，支持 URI 和 Base64 两种上传方式

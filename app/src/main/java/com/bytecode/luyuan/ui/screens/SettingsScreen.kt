@@ -81,6 +81,7 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel) {
     val apiConfig by viewModel.apiConfig.collectAsState()
     val apiTestState by viewModel.apiTestState.collectAsState()
     val savedApiConfigs by viewModel.savedApiConfigs.collectAsState()
+    val useServerAiService by viewModel.useServerAiService.collectAsState()
 
     val strings = LocalAppStrings.current
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -450,18 +451,31 @@ fun SettingsScreen(navController: NavController, viewModel: SettingsViewModel) {
             
             // AI Service Group
             SettingsGroupTitle(strings.apiConfigGroup)
-            SettingsItem(
+            
+            // 使用服务端 AI 服务开关 (v0.1.7.4 新增)
+            SettingsSwitchItem(
                 icon = Icons.Default.Settings,
-                title = strings.apiConfig,
-                subtitle = if (apiConfig.isConfigured) strings.configured else strings.notConfigured,
-                onClick = { showApiConfigDialog = true }
+                title = strings.useServerAiService,
+                subtitle = strings.useServerAiServiceSubtitle,
+                checked = useServerAiService,
+                onCheckedChange = { viewModel.setUseServerAiService(it) }
             )
-            SettingsItem(
-                icon = Icons.Default.Star,
-                title = strings.savedConfigs,
-                subtitle = "${savedApiConfigs.size} ${strings.configsSaved}",
-                onClick = { showSavedConfigsDialog = true }
-            )
+            
+            // 仅在未使用服务端 AI 时显示自定义 API 配置
+            if (!useServerAiService) {
+                SettingsItem(
+                    icon = Icons.Default.Settings,
+                    title = strings.apiConfig,
+                    subtitle = if (apiConfig.isConfigured) strings.configured else strings.notConfigured,
+                    onClick = { showApiConfigDialog = true }
+                )
+                SettingsItem(
+                    icon = Icons.Default.Star,
+                    title = strings.savedConfigs,
+                    subtitle = "${savedApiConfigs.size} ${strings.configsSaved}",
+                    onClick = { showSavedConfigsDialog = true }
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
@@ -590,7 +604,8 @@ fun SettingsSwitchItem(
     icon: ImageVector,
     title: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    subtitle: String? = null
 ) {
     Row(
         modifier = Modifier
@@ -604,11 +619,19 @@ fun SettingsSwitchItem(
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

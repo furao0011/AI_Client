@@ -151,7 +151,6 @@
   - 数据库迁移 v3 → v4，新增 `imageUrl` 字段
   - 消息展示适配：支持 URL 图片加载（Coil/Glide）
 
-# TO_DO_REQUEST
 
 ## v0.1.7.4 - 服务端对接（Phase 5: AI 网关模式）
 
@@ -161,6 +160,8 @@
   - 服务端模式下隐藏 API URL/Key 配置项
   - 服务端网关使用用户 Token 认证，服务端内部替换为真实 API Key
   - 保持 OpenAI API 格式完全兼容，SSE 流式响应透传
+
+# TO_DO_REQUEST
 
 ## v0.1.7.5 - 服务端对接（Phase 6: 测试与优化）
 
