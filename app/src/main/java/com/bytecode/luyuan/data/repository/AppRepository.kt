@@ -27,6 +27,9 @@ interface AppRepository {
     
     /** 所有保存的 API 配置列表 */
     val savedApiConfigs: Flow<List<ApiConfigEntity>>
+    
+    /** 是否使用服务端 AI 服务 */
+    val useServerAiService: Flow<Boolean>
 
     /** 设置语言 */
     suspend fun setLanguage(lang: String)
@@ -58,6 +61,13 @@ interface AppRepository {
     fun getMessages(sessionId: String): Flow<List<Message>>
     suspend fun sendMessage(sessionId: String, content: String, imageBase64: String? = null)
     suspend fun createSession(title: String): String
+    
+    /** 插入会话（用于从服务端同步时使用） */
+    suspend fun insertSession(session: Session)
+    
+    /** 插入消息（用于从服务端同步时使用） */
+    suspend fun insertMessage(message: Message)
+    
     suspend fun deleteSession(sessionId: String)
     suspend fun clearAllHistory()
     suspend fun editMessage(message: Message, newContent: String)

@@ -8,6 +8,63 @@
 - 当文档超过 200 行时，将 3 天前的记录折叠进 <details> 标签中。
 -->
 
+## 2025年12月5日
+
+### v0.1.7.2
+- [Feature] 会话与消息服务端同步:
+  - 新增 `OnlineRepository.kt`: 实现 `AppRepository` 接口，所有数据操作走服务端 API
+  - 会话列表从 `/api/sessions` 获取，支持分页 (`refreshSessions(page, size)`)
+  - 消息列表从 `/api/sessions/{id}/messages` 获取，支持分页 (`refreshMessages(sessionId, page, size)`)
+  - 发送消息对接 `/api/sessions/{id}/messages`，自动更新缓存
+  - 流式消息对接 `/api/sessions/{id}/messages/stream`，支持 SSE 流式响应
+- [Feature] Repository 动态切换:
+  - `AppContainer` 新增 `offlineRepository` 和 `onlineRepository` 独立访问
+  - 新增 `useOnlineMode` Flow，根据 `useServerAiService` 设置自动选择模式
+  - ViewModel 根据模式动态选择使用离线或在线 Repository
+- [Refactor] `SessionListViewModel` 重构:
+  - 移除对不存在的 `SessionService` 依赖
+  - 新增 `onlineSessions` StateFlow，展示服务端会话列表
+  - 自动根据 `useServerMode` 选择数据源
+- [Refactor] `ChatViewModel` 重构:
+  - 移除对不存在的 `MessageService` 依赖
+  - 新增 `onlineMessages` StateFlow，展示服务端消息列表
+  - 统一使用 `currentRepository` 处理发送和编辑消息
+
+### v0.1.7.1
+- [Feature] 用户认证对接:
+  - 新增 `RegisterScreen.kt`: 注册界面，支持用户名、密码、确认密码、邮箱（可选）输入
+  - 新增 `RegisterViewModel.kt`: 注册逻辑，包含完整的输入校验（用户名3-20字符、密码6-32字符、邮箱格式）
+  - `LoginScreen` 已包含注册入口，点击跳转到注册页面
+  - 注册成功后自动登录并跳转到会话列表
+- [Feature] 登录状态恢复:
+  - `AuthService.isLoginValid()`: App 启动时从 DataStore 恢复 Token 并验证
+  - `LoginViewModel` 初始化时自动检查登录状态，有效则直接跳转
+- [Refactor] `AuthService` 优化:
+  - 新增简化版 `login(username, password)` 和 `register(username, password, email?)` 方法，自动使用 `serverBaseUrl`
+  - 减少调用方需要传递的参数
+- [Refactor] `NetworkErrorHandler` 扩展:
+  - 新增 `getErrorMessage(code)` 方法，根据业务错误码返回用户友好的错误消息
+  - 支持所有服务端 API 错误码的本地化消息
+
+### v0.1.7
+- [Feature] 服务端对接基础架构搭建:
+  - 新增 `data/remote/api/` 目录，定义服务端 API 接口：
+    - `AuthApi.kt`: 用户认证接口（注册、登录、获取/更新用户信息、修改密码）
+    - `SessionApi.kt`: 会话管理接口（CRUD、分页获取、清空所有）
+    - `MessageApi.kt`: 消息管理接口（获取、发送、编辑、删除，支持流式 SSE）
+    - `UploadApi.kt`: 图片上传接口（Multipart 和 Base64 两种方式）
+    - `ApiResponse.kt`: 通用响应包装类，统一错误码定义
+  - 新增 `AuthService.kt`: 认证服务，管理 Token 状态、登录/登出、Token 恢复
+  - 新增 `NetworkErrorHandler.kt`: 网络错误处理器，统一异常转换、支持重试判断
+- [Refactor] `UserPreferencesDataStore` 扩展:
+  - 新增认证字段: `authToken`、`tokenExpiresAt`
+  - 新增服务端配置字段: `serverBaseUrl`、`useServerAiService`
+  - 新增 `effectiveApiConfig` Flow，根据模式自动选择 API 配置
+  - 新增方法: `setAuthToken()`、`clearAuthToken()`、`setServerBaseUrl()`、`setUseServerAiService()`
+- [Refactor] `AppContainer` 扩展:
+  - 暴露 `authService` 和 `userPreferencesDataStore` 供外部访问
+  - 为后续 Repository 切换（离线/在线模式）做准备
+
 ## 2025年11月28日
 
 ### v0.1.6.3

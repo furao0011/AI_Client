@@ -46,6 +46,9 @@ class OfflineRepository(
     
     // 多 API 配置管理
     override val savedApiConfigs: Flow<List<ApiConfigEntity>> = apiConfigDao.getAllConfigs()
+    
+    // 是否使用服务端 AI 服务
+    override val useServerAiService: Flow<Boolean> = userPreferencesDataStore.useServerAiService
 
     override suspend fun setLanguage(lang: String) {
         userPreferencesDataStore.setLanguage(lang)
@@ -301,6 +304,14 @@ class OfflineRepository(
         )
         sessionDao.insertSession(session)
         return id
+    }
+
+    override suspend fun insertSession(session: Session) {
+        sessionDao.insertSession(session)
+    }
+
+    override suspend fun insertMessage(message: Message) {
+        messageDao.insertMessage(message)
     }
 
     override suspend fun deleteSession(sessionId: String) {

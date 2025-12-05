@@ -11,10 +11,12 @@ import androidx.navigation.navArgument
 import com.bytecode.luyuan.ui.AppViewModelProvider
 import com.bytecode.luyuan.ui.screens.ChatScreen
 import com.bytecode.luyuan.ui.screens.LoginScreen
+import com.bytecode.luyuan.ui.screens.RegisterScreen
 import com.bytecode.luyuan.ui.screens.SessionListScreen
 import com.bytecode.luyuan.ui.screens.SettingsScreen
 import com.bytecode.luyuan.ui.viewmodel.ChatViewModel
 import com.bytecode.luyuan.ui.viewmodel.LoginViewModel
+import com.bytecode.luyuan.ui.viewmodel.RegisterViewModel
 import com.bytecode.luyuan.ui.viewmodel.SessionListViewModel
 import com.bytecode.luyuan.ui.viewmodel.SettingsViewModel
 
@@ -25,6 +27,10 @@ fun AppNavigation() {
         composable(Screen.Login.route) {
             val viewModel: LoginViewModel = viewModel(factory = AppViewModelProvider.Factory)
             LoginScreen(navController, viewModel)
+        }
+        composable(Screen.Register.route) {
+            val viewModel: RegisterViewModel = viewModel(factory = AppViewModelProvider.Factory)
+            RegisterScreen(navController, viewModel)
         }
         composable(Screen.SessionList.route) {
             val viewModel: SessionListViewModel = viewModel(factory = AppViewModelProvider.Factory)

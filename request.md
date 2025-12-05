@@ -114,8 +114,6 @@
     - 顶部栏改造：显示会话标题，支持下拉选择其他会话
     - 消息加载状态动画：等待响应时显示三点跳动加载动画
 
-# TO_DO_REQUEST
-
 ## v0.1.7 - 服务端对接（Phase 1: 基础架构）
 
 - 基础架构搭建：
@@ -143,6 +141,8 @@
   - 发送消息对接服务端 `/api/sessions/{id}/messages`
   - 流式消息对接服务端 SSE 端点 `/api/sessions/{id}/messages/stream`
   - `AppContainer` 支持 Repository 动态切换（离线/在线模式）
+
+# TO_DO_REQUEST
 
 ## v0.1.7.3 - 服务端对接（Phase 4: 图片消息适配）
 

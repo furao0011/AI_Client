@@ -7,19 +7,35 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.bytecode.luyuan.AIApplication
 import com.bytecode.luyuan.ui.viewmodel.ChatViewModel
 import com.bytecode.luyuan.ui.viewmodel.LoginViewModel
+import com.bytecode.luyuan.ui.viewmodel.RegisterViewModel
 import com.bytecode.luyuan.ui.viewmodel.SessionListViewModel
 import com.bytecode.luyuan.ui.viewmodel.SettingsViewModel
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
-            LoginViewModel(aiApplication().container.appRepository)
+            LoginViewModel(
+                aiApplication().container.appRepository,
+                aiApplication().container.authService
+            )
         }
         initializer {
-            SessionListViewModel(aiApplication().container.appRepository)
+            RegisterViewModel(
+                aiApplication().container.appRepository,
+                aiApplication().container.authService
+            )
         }
         initializer {
-            ChatViewModel(aiApplication().container.appRepository)
+            SessionListViewModel(
+                offlineRepository = aiApplication().container.offlineRepository,
+                onlineRepository = aiApplication().container.onlineRepository
+            )
+        }
+        initializer {
+            ChatViewModel(
+                offlineRepository = aiApplication().container.offlineRepository,
+                onlineRepository = aiApplication().container.onlineRepository
+            )
         }
         initializer {
             SettingsViewModel(aiApplication().container.appRepository)

@@ -68,9 +68,13 @@ POST /auth/register
             "email": "test@example.com",
             "avatarUrl": null
         },
-        "token": "eyJhbGciOiJIUzI1NiIs..."
+        "token": "eyJhbGciOiJIUzI1NiIs...",
+        "expiresAt": 1735689600000,
+        "refreshToken": "rt_xxx...",
+        "refreshTokenExpiresAt": 1738281600000
     }
 }
+```
 ```
 
 ---
@@ -101,14 +105,61 @@ POST /auth/login
             "avatarUrl": "https://server/api/images/avatar_xxx.jpg"
         },
         "token": "eyJhbGciOiJIUzI1NiIs...",
-        "expiresAt": 1735689600000
+        "expiresAt": 1735689600000,
+        "refreshToken": "rt_xxx...",
+        "refreshTokenExpiresAt": 1738281600000
     }
 }
 ```
 
 ---
 
-### 2.3 获取当前用户信息
+### 2.3 刷新 Token
+```
+POST /auth/refresh
+```
+
+**请求体**:
+```json
+{
+    "refreshToken": "string"
+}
+```
+
+**响应**:
+```json
+{
+    "code": 0,
+    "message": "success",
+    "data": {
+        "token": "eyJhbGciOiJIUzI1NiIs...",
+        "expiresAt": 1735689600000,
+        "refreshToken": "rt_new_xxx...",
+        "refreshTokenExpiresAt": 1738281600000
+    }
+}
+```
+
+---
+
+### 2.4 用户登出
+```
+POST /auth/logout
+Authorization: Bearer {token}
+```
+
+**响应**:
+```json
+{
+    "code": 0,
+    "message": "success",
+    "data": null
+}
+```
+
+---
+
+### 2.5 获取当前用户信息
 ```
 GET /user/profile
 ```
@@ -130,7 +181,7 @@ GET /user/profile
 
 ---
 
-### 2.4 更新用户信息
+### 2.6 更新用户信息
 ```
 PUT /user/profile
 ```
@@ -146,7 +197,7 @@ PUT /user/profile
 
 ---
 
-### 2.5 修改密码
+### 2.7 修改密码
 ```
 PUT /user/password
 ```

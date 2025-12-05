@@ -70,7 +70,27 @@ data class AppStrings(
     val currentSession: String,
     val switchSession: String,
     // 加载状态
-    val aiThinking: String
+    val aiThinking: String,
+    // 注册相关
+    val registerTitle: String,
+    val registerButton: String,
+    val confirmPassword: String,
+    val emailLabel: String,
+    val emailOptional: String,
+    val noAccount: String,
+    val hasAccount: String,
+    val goToRegister: String,
+    val goToLogin: String,
+    val registerSuccess: String,
+    val passwordMismatch: String,
+    val usernameTooShort: String,
+    val passwordTooShort: String,
+    val invalidEmail: String,
+    // 登录错误
+    val usernameEmpty: String,
+    val passwordEmpty: String,
+    val loginFailed: String,
+    val unknownError: String
 )
 
 val EnglishStrings = AppStrings(
@@ -140,7 +160,27 @@ val EnglishStrings = AppStrings(
     currentSession = "Current Session",
     switchSession = "Switch Session",
     // 加载状态
-    aiThinking = "AI is thinking"
+    aiThinking = "AI is thinking",
+    // 注册相关
+    registerTitle = "Create Account",
+    registerButton = "Register",
+    confirmPassword = "Confirm Password",
+    emailLabel = "Email",
+    emailOptional = "Optional",
+    noAccount = "Don't have an account?",
+    hasAccount = "Already have an account?",
+    goToRegister = "Register",
+    goToLogin = "Login",
+    registerSuccess = "Registration successful!",
+    passwordMismatch = "Passwords do not match",
+    usernameTooShort = "Username must be at least 3 characters",
+    passwordTooShort = "Password must be at least 6 characters",
+    invalidEmail = "Invalid email format",
+    // 登录错误
+    usernameEmpty = "Username cannot be empty",
+    passwordEmpty = "Password cannot be empty",
+    loginFailed = "Login failed, please check your credentials",
+    unknownError = "Unknown error occurred"
 )
 
 val ChineseStrings = AppStrings(
@@ -210,7 +250,27 @@ val ChineseStrings = AppStrings(
     currentSession = "当前会话",
     switchSession = "切换会话",
     // 加载状态
-    aiThinking = "AI 正在思考"
+    aiThinking = "AI 正在思考",
+    // 注册相关
+    registerTitle = "创建账号",
+    registerButton = "注册",
+    confirmPassword = "确认密码",
+    emailLabel = "邮箱",
+    emailOptional = "可选",
+    noAccount = "还没有账号？",
+    hasAccount = "已有账号？",
+    goToRegister = "注册",
+    goToLogin = "登录",
+    registerSuccess = "注册成功！",
+    passwordMismatch = "两次密码输入不一致",
+    usernameTooShort = "用户名至少需要3个字符",
+    passwordTooShort = "密码至少需要6个字符",
+    invalidEmail = "邮箱格式不正确",
+    // 登录错误
+    usernameEmpty = "用户名不能为空",
+    passwordEmpty = "密码不能为空",
+    loginFailed = "登录失败，请检查您的凭证",
+    unknownError = "发生未知错误"
 )
 
 val LocalAppStrings = staticCompositionLocalOf { EnglishStrings }
